@@ -1,4 +1,4 @@
-from math import sqrt
+import numpy as np
 from pyscipopt import Model, quicksum
 
 
@@ -41,8 +41,8 @@ class Gallery:
         model = Model("gallery")
 
         z = { (i,j): model.addVar("z({}, {})".format(i,j)) \
-                    for i in range(self.gallery_x[0], self.gallery_x[1] +1, taille_grain) \
-                    for j in range(self.gallery_y[0], self.gallery_y[1] +1, taille_grain)}
+                    for i in np.arange(self.gallery_x[0], self.gallery_x[1] +1, taille_grain) \
+                    for j in np.arange(self.gallery_y[0], self.gallery_y[1] +1, taille_grain)}
 
         # chaque oeuvre est couverte par une caméra 
         # <=> il y a au moins une caméra de type 2 dans un rayon 8 ou cam1 dans un rayon de 4
@@ -58,8 +58,8 @@ class Gallery:
 
         # minimiser sum((x,y)) correspondant au coût d'une caméra (0, 1, 2)
         model.setObjective( quicksum(z[(i,j)] \
-                    for i in range(self.gallery_x[0], self.gallery_x[1], taille_grain) \
-                    for j in range(self.gallery_y[0], self.gallery_y[1], taille_grain)) , "minimize")
+                    for i in np.arange(self.gallery_x[0], self.gallery_x[1], taille_grain) \
+                    for j in np.arange(self.gallery_y[0], self.gallery_y[1], taille_grain)) , "minimize")
         
         model.optimize()
 
@@ -80,4 +80,4 @@ if __name__ == '__main__':
     print(len(g.art_pieces), " oeuvres d'art")
     print("min_x,max_x :", g.gallery_x)
     print("min_y,max_y :", g.gallery_y)
-    g.solve()
+    g.solve(0.5)

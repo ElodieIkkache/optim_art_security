@@ -9,3 +9,7 @@ Idées:
 grand nombre d'oeuvres, puis celle qui maximise à chaque fois la couverture
 
 * Par contraintes: chaque oeuvre doit être dans le rayon d'une caméra et on minimise le coût 
+
+# identifiants primers
+compte : elodie_charles  
+mdp : optim

@@ -38,28 +38,28 @@ class Gallery:
         return (r1,p1), (r2,p2), art_pieces, (min_x,max_x), (min_y,max_y)
 
     def solve(self, taille_grain=1):
-        grid_x = int((self.gallery_x[1]-self.gallery_x[0])/taille_grain)
-        grid_y = int((self.gallery_y[1]-self.gallery_y[0])/taille_grain)
         model = Model("gallery")
 
-        z = [[model.addVar("z({}, {})".format(i,j)) for i in range(grid_x)] for j in range(grid_y)]
+        z = { (i,j): model.addVar("z({}, {})".format(i,j)) \
+                    for i in range(self.gallery_x[0], self.gallery_x[1] +1, taille_grain) \
+                    for j in range(self.gallery_y[0], self.gallery_y[1] +1, taille_grain)}
 
         # chaque oeuvre est couverte par une caméra 
         # <=> il y a au moins une caméra de type 2 dans un rayon 8 ou cam1 dans un rayon de 4
         for artwork in self.art_pieces: 
             # tous les points dans le disque de rayon max = 8
-            # on prend d'abord un carré de longueur 16 autour du point et on élage les points pas dans le cercle
-            possible = [(x, y) for x in range(artwork[0]-4, artwork[0]+4) for y in range(artwork[1]-4, artwork[1]+4) if \
-                            dist(artwork, (x, y)) <= 4**2]
-            print(artwork)
-            print(possible)
-            input()
-
+            # on prend d'abord un carré de longueur 8 autour du point et on élage les points pas dans le cercle
+            possible4 = [(artwork[0]+i, artwork[1]+j) for i in range(-4, 5) for j in range(-4, 5) if \
+                            dist(artwork, (artwork[0]+i, artwork[1]+j)) <= 4**2 \
+                            and self.gallery_x[0] <= artwork[0]+i <= self.gallery_x[1] \
+                            and self.gallery_y[0] <= artwork[1]+j <= self.gallery_y[1]]
             # somme de tous les points autour de l'oeuvre >= 1
-            model.addCons( quicksum(z[i][j] for i,j in possible) >=1  , "protege")
+            model.addCons( quicksum(z[(i,j)] for i,j in possible4) >=1  , "protege")
 
         # minimiser sum((x,y)) correspondant au coût d'une caméra (0, 1, 2)
-        model.setObjective( quicksum(z[i][j] for i in range(grid_x) for j in range(grid_y)) , "minimize")
+        model.setObjective( quicksum(z[(i,j)] \
+                    for i in range(self.gallery_x[0], self.gallery_x[1], taille_grain) \
+                    for j in range(self.gallery_y[0], self.gallery_y[1], taille_grain)) , "minimize")
         
         model.optimize()
 

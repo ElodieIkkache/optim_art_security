@@ -37,6 +37,10 @@ class Gallery:
         return (r1,p1), (r2,p2), art_pieces, (min_x,max_x), (min_y,max_y)
 
     def solve(self, taille_grain=1):
+        """ résoud le problème. prend en entrée le grain/pas de la grille, et crée un fichier de réponse \n
+        contenant les coordonnées des caméras dans la gallerie.
+        :return: l'optimisation des variables """
+
         model = Model("gallery")
         # modélisation d'une petite caméra par case
         p = { (i,j): model.addVar("p({}, {})".format(i,j), vtype="B") \
@@ -98,6 +102,7 @@ class Gallery:
 
 
 def dist(objet1, objet2):
+    """ calcule la distance d'un point à un autre dans la gallerie """
     x = objet1[0] - objet2[0]
     y = objet1[1] - objet2[1]
     return x**2 + y**2

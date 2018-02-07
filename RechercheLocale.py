@@ -43,16 +43,19 @@ class Gallery:
         solutions proches plus optimales.
         :return:
         """
+        # la recherche locale nécessite de partir d'une solution et de l'optimiser
         cameras = {}
         if config == 1:
+            # la configuration de départ 1 correspond à placer une caméra de type 2 par oeuvre d'art
             for art in self.art_pieces:
-                # une solution qui marche forcément est de placer une grande caméra sur chaque oeuvre d'art
                 cameras[(2, art[0], art[1])] = []
         else:
+            # une autre configuration de départ est de placer des caméras de façon régulière, comme dans une grille
             for i in range(self.gallery_x[0], self.gallery_x[1] + 1, 5):
                     for j in range(self.gallery_y[0], self.gallery_y[1] +1, 5):
                         cameras[(2, i, j)] = []
         print("caméras in place")
+        # pour chaque caméra, on regarde quelles oeuvres d'art se situent dans leur champ d'action
         delete = []
         for cam in cameras:
             if cam[0] == 1:
@@ -65,6 +68,7 @@ class Gallery:
             if cameras[cam] == []:
                 delete.append(cam)
         for cam in delete:
+            # si il n'y a aucune oeuvre d'art dans leur champ d'action, on les supprime (configuration 2)
             del cameras[cam]
         print("cameras watching")
 
@@ -73,9 +77,15 @@ class Gallery:
         Nb2 = len(cameras)
         count_boucle_while = 0
         while Nb1>Nb2 and count_boucle_while<10:
+            # on itère la recherche locale jusqu'à ce que ça se stabilise, ou au bout de 10 itérations
             count_boucle_while += 1
             deletions = []
             for cam1, list_art1 in cameras.items():
+                # pour chaque caméra, on regarde si chacune des oeuvres à sa charge est aussi à la charge
+                # d'une autre caméra. Si cette caméra est la seule a avoir une certaine oeuvre, alors toutes les
+                # oeuvres dans son champ d'action ne sont plus à la charge des autres caméra.
+                # Sinon, on regarde si l'ensemble des oeuvres dont elle a la charge est inclue ou contient les oeuvres
+                # à la charge d'une autre caméra. Auquel cas, l'une des caméra est redondante et est supprimée
                 a = 0
                 necessary = False
                 suppressed = False
@@ -90,10 +100,12 @@ class Gallery:
                             l2 = len(list_art2)
                             if art in list_art2:
                                 if necessary:
+                                    # si cette caméra ne peut pas être enlevée de façon certaine, alors on enlève ses
+                                    # autres oeuvres de a charge des autres caméras
                                     list_art2.remove(art)
                                     if list_art2 == []:
                                         deletions.append(cam2)
-
+                                # si un ensemble d'oeuvres est inclu dans un autre, on supprime la caméra inutile
                                 elif len(list_art2)>=len(list_art1):
                                     inclu = True
                                     for e in list_art1 :
@@ -122,6 +134,7 @@ class Gallery:
                     a += 1;
 
             for cam in deletions:
+                # on supprime les caméras inutiles
                 try:
                     del cameras[cam]
                 except:
@@ -130,6 +143,8 @@ class Gallery:
             Nb2 = len(cameras)
             print("nombre de caméra retirées à la boucle "+ str(count_boucle_while) + " : " + str(Nb1-Nb2))
         for cam, list_art1 in cameras.items():
+            # pour chaque camré, on essaie de voir si on réduit son champ d'action, si elle continue de surveiller
+            # touts les oeuvres à sa charge
             if cam[0] == 2:
                 reduce = True
                 for art in list_art1:
@@ -152,6 +167,13 @@ class Gallery:
         print("le nombre total caméras est : " + str(len(cameras)))
         print("dont " + str(petites) + " petites caméras et " + str(grandes) + " grandes caméras")
         print("le prix total est : " + str(petites * self.petit_carac[1] + grandes * self.grand_carac[1]) + " €")
+
+        #on écrit le résultat dans un fichier
+        f = open("results.txt", "w")
+        for cam in self.cameras:
+            f.write(str(cam[0])+ "," + str(cam[1]) + "," + str(cam[2]) + "\n")
+        # on renvoie le prix total
+        return(petites * self.petit_carac[1] + grandes * self.grand_carac[1])
 
 
 

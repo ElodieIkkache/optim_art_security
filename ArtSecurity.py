@@ -10,7 +10,6 @@ class Gallery:
         self.art_pieces = context[2]
         self.gallery_x = context[3]
         self.gallery_y = context[4]
-        self.cameras = []
 
     def create_context(self, file):
         """ transforme le fichier en données utilisables
@@ -40,12 +39,12 @@ class Gallery:
     def solve(self, taille_grain=1):
         model = Model("gallery")
         # modélisation d'une petite caméra par case
-        p = { (i,j): model.addVar("p({}, {})".format(i,j)) \
+        p = { (i,j): model.addVar("p({}, {})".format(i,j), vtype="INTEGER") \
                     for i in np.arange(self.gallery_x[0], self.gallery_x[1] +1, taille_grain) \
                     for j in np.arange(self.gallery_y[0], self.gallery_y[1] +1, taille_grain)}
                         
         # modélisation d'une grande caméra par case
-        g = { (i,j): model.addVar("g({}, {})".format(i,j)) \
+        g = { (i,j): model.addVar("g({}, {})".format(i,j), vtype="INTEGER") \
                     for i in np.arange(self.gallery_x[0], self.gallery_x[1] +1, taille_grain) \
                     for j in np.arange(self.gallery_y[0], self.gallery_y[1] +1, taille_grain)}
 
@@ -67,28 +66,36 @@ class Gallery:
                             and self.gallery_y[0] <= artwork[1]+j <= self.gallery_y[1]]
             # somme de tous les points autour de l'oeuvre >= 1
             model.addCons( quicksum(p[(i,j)] for i,j in possible_petit) + quicksum(g[(i,j)] for i,j in possible_grand) >=1  , "protege")
-            for i,j in possible_petit:
-                model.addCons( 0 <= (p[(i,j)]+g[(i,j)] <=1)  , "une_seule_cam")
             for i,j in possible_grand:
-                model.addCons( 0 <= (g[(i,j)] <=1)  , "une_seule_cam")
-
+                model.addCons( 0 <= (p[(i,j)]+g[(i,j)] <=1)  , "une_seule_cam")
+            # for i,j in possible_grand:
+            #     model.addCons( 0 <= (g[(i,j)] <=1)  , "une_seule_cam")
                 
 
         # minimiser sum(petite(x,y)+ 2*grande(x,y)) correspondant au coût de toutes les caméras dans la gallerie
-        model.setObjective( quicksum(self.petit_carac[1] * p[(i,j)] + self.grand_carac[1] * g[(i,j)] \
+        model.setObjective( self.petit_carac[1] * quicksum( p[(i,j)] \
+                    for i in np.arange(self.gallery_x[0], self.gallery_x[1], taille_grain) \
+                    for j in np.arange(self.gallery_y[0], self.gallery_y[1], taille_grain)) \
+                         + self.grand_carac[1] * quicksum( g[(i,j)] \
                     for i in np.arange(self.gallery_x[0], self.gallery_x[1], taille_grain) \
                     for j in np.arange(self.gallery_y[0], self.gallery_y[1], taille_grain)) , "minimize")
         
         model.optimize()
 
+        f = open("results.txt", "w")
+
         if model.getStatus() != 'optimal':
             print('LP is not feasible!')
         else:
-            #for elt in 
-            print("Optimal value: {}".format(model.getObjVal()))
+            for key, value in p.items():
+                if model.getVal(value) != 0:
+                    f.write("{},{},{}\n".format(int(model.getVal(value)), key[0], key[1]))
+            
+            for key, value in g.items():
+                if model.getVal(value) != 0:
+                    f.write("{},{},{}\n".format(int( 2 * model.getVal(value)), key[0], key[1]))                    
 
-        def create_output(self):
-            self.cameras
+            print("Optimal value: {}".format(model.getObjVal()))
 
 
 def dist(objet1, objet2):

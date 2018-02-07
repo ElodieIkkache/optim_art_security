@@ -5,16 +5,16 @@ from pyscipopt import Model, quicksum
 class Gallery:
     def __init__(self, file):
         context = self.create_context(file)
-        self.small_camera_caracteristics = context[0]
-        self.big_camera_caracteristics = context[1]
+        self.petit_carac = context[0] # rayon, prix
+        self.grand_carac = context[1]
         self.art_pieces = context[2]
         self.gallery_x = context[3]
         self.gallery_y = context[4]
         self.cameras = []
 
     def create_context(self, file):
-        """ transform file into usable data
-        :return: camera1 specs, cam2 specs, artwork coordinates, gallery length (min_x,max_x), gallery width (min_y,max_y)
+        """ transforme le fichier en données utilisables
+        :return: camera1 specs, cam2 specs, coordonnées des oeuvres, longueur de la gallerie (min_x,max_x), largeur de la gallerie (min_y,max_y)
         """
         lines = open(file, 'r').readlines()
         
@@ -39,25 +39,43 @@ class Gallery:
 
     def solve(self, taille_grain=1):
         model = Model("gallery")
-
-        z = { (i,j): model.addVar("z({}, {})".format(i,j)) \
+        # modélisation d'une petite caméra par case
+        p = { (i,j): model.addVar("p({}, {})".format(i,j)) \
+                    for i in np.arange(self.gallery_x[0], self.gallery_x[1] +1, taille_grain) \
+                    for j in np.arange(self.gallery_y[0], self.gallery_y[1] +1, taille_grain)}
+                        
+        # modélisation d'une grande caméra par case
+        g = { (i,j): model.addVar("g({}, {})".format(i,j)) \
                     for i in np.arange(self.gallery_x[0], self.gallery_x[1] +1, taille_grain) \
                     for j in np.arange(self.gallery_y[0], self.gallery_y[1] +1, taille_grain)}
 
         # chaque oeuvre est couverte par une caméra 
-        # <=> il y a au moins une caméra de type 2 dans un rayon 8 ou cam1 dans un rayon de 4
+        # <=> il y a une caméra de type 1 dans un rayon de 4
+        #     ou au moins une caméra de type 2 dans un rayon 8 
         for artwork in self.art_pieces: 
-            # tous les points dans le disque de rayon max = 8
-            # on prend d'abord un carré de longueur 8 autour du point et on élage les points pas dans le cercle
-            possible4 = [(artwork[0]+i, artwork[1]+j) for i in range(-4, 5) for j in range(-4, 5) if \
-                            dist(artwork, (artwork[0]+i, artwork[1]+j)) <= 4**2 \
+            # Pour les petites caméras: on prend d'abord un carré de longueur 8 autour du point et on élague les points pas dans le cercle
+            possible_petit = [(artwork[0]+i, artwork[1]+j) for i in range(-self.petit_carac[0], self.petit_carac[0]+1) \
+                                                        for j in range(-self.petit_carac[0], self.petit_carac[0]+1) if \
+                            dist(artwork, (artwork[0]+i, artwork[1]+j)) <= self.petit_carac[0] ** 2 \
+                            and self.gallery_x[0] <= artwork[0]+i <= self.gallery_x[1] \
+                            and self.gallery_y[0] <= artwork[1]+j <= self.gallery_y[1]]
+            # Pour les grandes caméras: idem mais carré de longueur 16
+            possible_grand = [(artwork[0]+i, artwork[1]+j) for i in range(-self.grand_carac[0], self.grand_carac[0]+1) \
+                                                        for j in range(-self.grand_carac[0], self.grand_carac[0]+1) if \
+                            dist(artwork, (artwork[0]+i, artwork[1]+j)) <= self.grand_carac[0] ** 2 \
                             and self.gallery_x[0] <= artwork[0]+i <= self.gallery_x[1] \
                             and self.gallery_y[0] <= artwork[1]+j <= self.gallery_y[1]]
             # somme de tous les points autour de l'oeuvre >= 1
-            model.addCons( quicksum(z[(i,j)] for i,j in possible4) >=1  , "protege")
+            model.addCons( quicksum(p[(i,j)] for i,j in possible_petit) + quicksum(g[(i,j)] for i,j in possible_grand) >=1  , "protege")
+            for i,j in possible_petit:
+                model.addCons( 0 <= (p[(i,j)]+g[(i,j)] <=1)  , "une_seule_cam")
+            for i,j in possible_grand:
+                model.addCons( 0 <= (g[(i,j)] <=1)  , "une_seule_cam")
 
-        # minimiser sum((x,y)) correspondant au coût d'une caméra (0, 1, 2)
-        model.setObjective( quicksum(z[(i,j)] \
+                
+
+        # minimiser sum(petite(x,y)+ 2*grande(x,y)) correspondant au coût de toutes les caméras dans la gallerie
+        model.setObjective( quicksum(self.petit_carac[1] * p[(i,j)] + self.grand_carac[1] * g[(i,j)] \
                     for i in np.arange(self.gallery_x[0], self.gallery_x[1], taille_grain) \
                     for j in np.arange(self.gallery_y[0], self.gallery_y[1], taille_grain)) , "minimize")
         
@@ -66,7 +84,12 @@ class Gallery:
         if model.getStatus() != 'optimal':
             print('LP is not feasible!')
         else:
+            #for elt in 
             print("Optimal value: {}".format(model.getObjVal()))
+
+        def create_output(self):
+            self.cameras
+
 
 def dist(objet1, objet2):
     x = objet1[0] - objet2[0]
@@ -80,4 +103,4 @@ if __name__ == '__main__':
     print(len(g.art_pieces), " oeuvres d'art")
     print("min_x,max_x :", g.gallery_x)
     print("min_y,max_y :", g.gallery_y)
-    g.solve(0.5)
+    g.solve(1)

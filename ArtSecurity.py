@@ -39,12 +39,12 @@ class Gallery:
     def solve(self, taille_grain=1):
         model = Model("gallery")
         # modélisation d'une petite caméra par case
-        p = { (i,j): model.addVar("p({}, {})".format(i,j), vtype="INTEGER") \
+        p = { (i,j): model.addVar("p({}, {})".format(i,j), vtype="B") \
                     for i in np.arange(self.gallery_x[0], self.gallery_x[1] +1, taille_grain) \
                     for j in np.arange(self.gallery_y[0], self.gallery_y[1] +1, taille_grain)}
                         
         # modélisation d'une grande caméra par case
-        g = { (i,j): model.addVar("g({}, {})".format(i,j), vtype="INTEGER") \
+        g = { (i,j): model.addVar("g({}, {})".format(i,j), vtype="B") \
                     for i in np.arange(self.gallery_x[0], self.gallery_x[1] +1, taille_grain) \
                     for j in np.arange(self.gallery_y[0], self.gallery_y[1] +1, taille_grain)}
 
@@ -58,27 +58,26 @@ class Gallery:
                             dist(artwork, (artwork[0]+i, artwork[1]+j)) <= self.petit_carac[0] ** 2 \
                             and self.gallery_x[0] <= artwork[0]+i <= self.gallery_x[1] \
                             and self.gallery_y[0] <= artwork[1]+j <= self.gallery_y[1]]
+            
             # Pour les grandes caméras: idem mais carré de longueur 16
             possible_grand = [(artwork[0]+i, artwork[1]+j) for i in range(-self.grand_carac[0], self.grand_carac[0]+1) \
                                                         for j in range(-self.grand_carac[0], self.grand_carac[0]+1) if \
                             dist(artwork, (artwork[0]+i, artwork[1]+j)) <= self.grand_carac[0] ** 2 \
                             and self.gallery_x[0] <= artwork[0]+i <= self.gallery_x[1] \
                             and self.gallery_y[0] <= artwork[1]+j <= self.gallery_y[1]]
+            
             # somme de tous les points autour de l'oeuvre >= 1
             model.addCons( quicksum(p[(i,j)] for i,j in possible_petit) + quicksum(g[(i,j)] for i,j in possible_grand) >=1  , "protege")
             for i,j in possible_grand:
-                model.addCons( 0 <= (p[(i,j)]+g[(i,j)] <=1)  , "une_seule_cam")
-            # for i,j in possible_grand:
-            #     model.addCons( 0 <= (g[(i,j)] <=1)  , "une_seule_cam")
-                
+                model.addCons( 0 <= (p[(i,j)]+g[(i,j)] <=1)  , "une_seule_cam")                
 
         # minimiser sum(petite(x,y)+ 2*grande(x,y)) correspondant au coût de toutes les caméras dans la gallerie
         model.setObjective( self.petit_carac[1] * quicksum( p[(i,j)] \
-                    for i in np.arange(self.gallery_x[0], self.gallery_x[1], taille_grain) \
-                    for j in np.arange(self.gallery_y[0], self.gallery_y[1], taille_grain)) \
+                    for i in np.arange(self.gallery_x[0], self.gallery_x[1]+1, taille_grain) \
+                    for j in np.arange(self.gallery_y[0], self.gallery_y[1]+1, taille_grain)) \
                          + self.grand_carac[1] * quicksum( g[(i,j)] \
-                    for i in np.arange(self.gallery_x[0], self.gallery_x[1], taille_grain) \
-                    for j in np.arange(self.gallery_y[0], self.gallery_y[1], taille_grain)) , "minimize")
+                    for i in np.arange(self.gallery_x[0], self.gallery_x[1]+1, taille_grain) \
+                    for j in np.arange(self.gallery_y[0], self.gallery_y[1]+1, taille_grain)) , "minimize")
         
         model.optimize()
 
